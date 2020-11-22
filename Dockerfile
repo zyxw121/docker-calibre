@@ -1,4 +1,4 @@
-FROM ghcr.io/linuxserver/baseimage-guacgui
+FROM ubuntu:18.04 
 
 # set version label
 ARG BUILD_DATE
@@ -25,33 +25,48 @@ RUN \
 	libxcb-randr0 \
 	libxcb-render-util0 \
 	libxcb-xinerama0 \
+  libgl1-mesa-glx \
+  libxcomposite-dev \
+  libnss3 \
+  libxi6 \
 	python3 \
 	python3-xdg \
 	ttf-wqy-zenhei \
 	wget \
-	xz-utils && \
+	xz-utils 
+COPY /calibre-tarball.txz /tmp
+RUN \
  echo "**** install calibre ****" && \
  mkdir -p \
 	/opt/calibre && \
- if [ -z ${CALIBRE_RELEASE+x} ]; then \
-	CALIBRE_RELEASE=$(curl -sX GET "https://api.github.com/repos/kovidgoyal/calibre/releases/latest" \
-	| jq -r .tag_name); \
- fi && \
- CALIBRE_VERSION="$(echo ${CALIBRE_RELEASE} | cut -c2-)" && \
+ CALIBRE_VERSION="5.5.0" && \
+ echo $CALIBRE_RELASE && \
  CALIBRE_URL="https://download.calibre-ebook.com/${CALIBRE_VERSION}/calibre-${CALIBRE_VERSION}-x86_64.txz" && \
- curl -o \
-	/tmp/calibre-tarball.txz -L \
-	"$CALIBRE_URL" && \
+ echo "$CALIBRE_URL" && \
+ # wget --no-check-certificate "$CALIBRE_URL" -O /tmp/calibre-tarball.txz && \
  tar xvf /tmp/calibre-tarball.txz -C \
 	/opt/calibre && \
  /opt/calibre/calibre_postinstall && \
- dbus-uuidgen > /etc/machine-id && \
+ dbus-uuidgen > /etc/machine-id  
+RUN \
  echo "**** cleanup ****" && \
  apt-get clean && \
  rm -rf \
 	/tmp/* \
 	/var/lib/apt/lists/* \
-	/var/tmp/*
+	/var/tmp/* && \
+  mkdir /home/calibre && \
+  mkdir /home/Books 
 
 # add local files
-COPY root/ /
+#COPY / /home/calibre/
+RUN addgroup --gid 1024 mygroup
+RUN adduser --disabled-password --gecos "" --force-badname --ingroup mygroup cal 
+USER cal
+
+ENV CALIBRE_DEVELOP_FROM=/home/calibre/src
+
+#RUN calibre-server /home/Books
+
+#docker run -v .../calibre:/home/calibre .../books:/home/Books 
+  
